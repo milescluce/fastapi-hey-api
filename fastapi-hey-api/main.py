@@ -3,6 +3,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any
 from pathlib import Path
 import json
+from contextlib import asynccontextmanager
+
 type HeyAPIOutputDir = str
 """The cwd where the HeyAPIOutputFolder will be generated."""
 type HeyAPIOutputFolderName = str | None
@@ -39,7 +41,7 @@ class HeyAPIConfig(BaseSettings):
         p.touch(exist_ok=True)
         return p
 
-    def scaffold(self, open_api: OpenAPISchema):
+    def scaffold(self, oas: OpenAPISchema):
         op = self.output_path
         p = op / "openapi-ts.config.ts"
         p.touch()
@@ -48,10 +50,10 @@ class HeyAPIConfig(BaseSettings):
         gi.write_text("openapi.json")
         oap = op / "openapi.json"
         oap.touch()
-        json.dump(fp=oap, obj=open_api) #type: ignore
+        json.dump(fp=oap, obj=oas) #type: ignore
         tmpl = HEY_API_CONFIG_TEMPLATE.format(
             input = str(oap),
-            output = f"{self.output_path}/client"
+            output = f"{str(self.output_path)}/client"
         )
         p.write_text(tmpl)
 
@@ -59,8 +61,10 @@ type OpenAPISchema = dict[str, Any]
 """This is representation of the OpenAPI schema in memory that will be written to a 
 .json file wherever .hey-api.env specifies, the default is '.'"""
 
+@asynccontextmanager
 def hey_api_lifespan(app: FastAPI):
     config = HeyAPIConfig()
     open_api = app.openapi()
     config.scaffold(open_api)
     yield app
+
