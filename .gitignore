@@ -1,6 +1,6 @@
 # Byte-compiled / optimized / DLL files
 # node
-node_modules
+node_modules/
 
 __pycache__/
 *.py[codz]
