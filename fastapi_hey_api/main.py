@@ -21,7 +21,6 @@ export default defineConfig({
 });
 """
 
-
 class HeyAPIConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".hey-api.env",
@@ -33,10 +32,10 @@ class HeyAPIConfig(BaseSettings):
     def get_folder_name(self, app: FastAPI) -> HeyAPIOutputFolderName:
         output_folder_name = self.output_folder_name if self.output_folder_name else app.title
         return output_folder_name
-   
+
     @property
     def output_path(self) -> Path:
-        p = Path(self.output_path)
+        p = Path(self.output_dir)
         assert p.is_dir()
         p.touch(exist_ok=True)
         return p
@@ -47,10 +46,11 @@ class HeyAPIConfig(BaseSettings):
         p.touch()
         gi = op / ".gitignore"
         gi.touch()
-        gi.write_text("openapi.json")
+        _ = gi.write_text("openapi.json")
         oap = op / "openapi.json"
         oap.touch()
-        json.dump(fp=oap, obj=oas) #type: ignore
+        with open(oap, "w") as f:
+            json.dump(oas, f)
         tmpl = HEY_API_CONFIG_TEMPLATE.format(
             input = str(oap),
             output = f"{str(self.output_path)}/client"
@@ -62,7 +62,7 @@ type OpenAPISchema = dict[str, Any]
 .json file wherever .hey-api.env specifies, the default is '.'"""
 
 @asynccontextmanager
-def hey_api_lifespan(app: FastAPI):
+async def hey_api_lifespan(app: FastAPI):
     config = HeyAPIConfig()
     open_api = app.openapi()
     config.scaffold(open_api)
